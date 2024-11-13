@@ -5,6 +5,7 @@
 package ahocorasick
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"sync"
@@ -326,6 +327,22 @@ func TestContains(t *testing.T) {
 	m = NewStringMatcher([]string{"SupermanX", "per"})
 	contains = m.Contains([]byte("The Man Of Steel: Superman"))
 	assert(t, contains == true)
+}
+
+func ExampleMatcher_Match() {
+	m := NewMatcher([][]byte{
+		[]byte("he"),
+		[]byte("she"),
+		[]byte("his"),
+		[]byte("hers"),
+		[]byte("she"),
+	})
+
+	matches := m.Match([]byte("usher"))
+	fmt.Print(matches)
+
+	// Output:
+	// [4 0]
 }
 
 var bytes = []byte("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.101 Safari/537.36")
