@@ -278,9 +278,7 @@ func match(in []byte, n *node, unique func(f *node) bool) []int {
 // thread-safe manner. Uses a sync.Pool of haystacks to track the uniqueness of
 // the result items.
 func (m *Matcher) MatchThreadSafe(in []byte) []int {
-	var (
-		heap map[int]uint64
-	)
+	var heap map[int]uint64
 
 	generation := atomic.AddUint64(&m.counter, 1)
 	n := m.root
