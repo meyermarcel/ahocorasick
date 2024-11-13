@@ -96,11 +96,11 @@ func (m *Matcher) buildTrie(dictionary [][]byte) {
 	// are distinct plus the root). This is used to preallocate memory
 	// for it.
 
-	max := 1
+	maxSize := 1
 	for _, blice := range dictionary {
-		max += len(blice)
+		maxSize += len(blice)
 	}
-	m.trie = make([]node, max)
+	m.trie = make([]node, maxSize)
 
 	// Calling this an ignoring its argument simply allocated
 	// m.trie[0] which will be the root element
