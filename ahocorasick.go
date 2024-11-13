@@ -218,6 +218,11 @@ func NewStringMatcher(dictionary []string) *Matcher {
 	return m
 }
 
+type Match struct {
+	dictIdx int
+	textIdx int
+}
+
 func (m *Matcher) Matches(in []byte) iter.Seq[int] {
 	m.counter++
 
@@ -228,7 +233,9 @@ func (m *Matcher) Matches(in []byte) iter.Seq[int] {
 		}
 		return false
 	}
-	return match(in, m.root, unique)
+	newMatch := func(i, _ int) int { return i }
+
+	return match(in, m.root, unique, newMatch)
 }
 
 // Match searches in for blices and returns all the blices found as indexes into
@@ -245,18 +252,63 @@ func (m *Matcher) Match(in []byte) []int {
 		}
 		return false
 	}
+
+	newMatch := func(i, _ int) int { return i }
+
 	var hits []int
-	for hit := range match(in, m.root, unique) {
+
+	for hit := range match(in, m.root, unique, newMatch) {
 		hits = append(hits, hit)
 	}
 	return hits
 }
 
+func (m *Matcher) MatchIndex(in []byte) []Match {
+	m.counter++
+
+	unique := func(f *node) bool {
+		if f.counter != m.counter {
+			f.counter = m.counter
+			return true
+		}
+		return false
+	}
+
+	newMatch := func(dictIdx, textIdx int) Match {
+		return Match{dictIdx, textIdx}
+	}
+
+	var matches []Match
+
+	for ma := range match(in, m.root, unique, newMatch) {
+		matches = append(matches, ma)
+	}
+	return matches
+}
+
+func (m *Matcher) MatchIndices(in []byte) iter.Seq[Match] {
+	m.counter++
+
+	unique := func(f *node) bool {
+		if f.counter != m.counter {
+			f.counter = m.counter
+			return true
+		}
+		return false
+	}
+
+	newMatch := func(dictIdx, textIdx int) Match {
+		return Match{dictIdx, textIdx}
+	}
+
+	return match(in, m.root, unique, newMatch)
+}
+
 // match is a core of matching logic. Accepts input byte slice, starting node
 // and a func to check whether should we include result into response or not
-func match(in []byte, n *node, unique func(f *node) bool) iter.Seq[int] {
-	return func(yield func(int) bool) {
-		for _, b := range in {
+func match[T int | Match](in []byte, n *node, unique func(f *node) bool, newMatch func(dictIdx, textIdx int) T) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for inIdx, b := range in {
 			c := int(b)
 
 			if !n.root && n.child[c] == nil {
@@ -269,7 +321,7 @@ func match(in []byte, n *node, unique func(f *node) bool) iter.Seq[int] {
 
 				if f.output {
 					if unique(f) {
-						if !yield(f.index) {
+						if !yield(newMatch(f.index, inIdx-(len(f.b)-1))) {
 							return
 						}
 					}
@@ -278,7 +330,7 @@ func match(in []byte, n *node, unique func(f *node) bool) iter.Seq[int] {
 				for !f.suffix.root {
 					f = f.suffix
 					if unique(f) {
-						if !yield(f.index) {
+						if !yield(newMatch(f.index, inIdx-(len(f.b)-1))) {
 							return
 						}
 					} else {
@@ -319,8 +371,12 @@ func (m *Matcher) MatchThreadSafe(in []byte) []int {
 		}
 		return false
 	}
+
+	newMatch := func(i, bLen int) int { return i }
+
 	var hits []int
-	for hit := range match(in, n, unique) {
+
+	for hit := range match(in, n, unique, newMatch) {
 		hits = append(hits, hit)
 	}
 
