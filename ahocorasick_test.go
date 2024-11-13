@@ -345,6 +345,23 @@ func ExampleMatcher_Match() {
 	// [4 0]
 }
 
+func ExampleMatcher_Matches() {
+	matcher := NewMatcher([][]byte{
+		[]byte("he"),
+		[]byte("she"),
+		[]byte("his"),
+		[]byte("hers"),
+		[]byte("she"),
+	})
+
+	for m := range matcher.Matches([]byte("usher")) {
+		fmt.Printf("%d ", m)
+	}
+
+	// Output:
+	// 4 0
+}
+
 var bytes = []byte("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.101 Safari/537.36")
 var sbytes = string(bytes)
 var dictionary = []string{"Mozilla", "Mac", "Macintosh", "Safari", "Sausage"}

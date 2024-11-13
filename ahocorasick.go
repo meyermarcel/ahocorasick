@@ -11,6 +11,7 @@ package ahocorasick
 
 import (
 	"container/list"
+	"iter"
 	"sync"
 	"sync/atomic"
 )
@@ -217,6 +218,19 @@ func NewStringMatcher(dictionary []string) *Matcher {
 	return m
 }
 
+func (m *Matcher) Matches(in []byte) iter.Seq[int] {
+	m.counter++
+
+	unique := func(f *node) bool {
+		if f.counter != m.counter {
+			f.counter = m.counter
+			return true
+		}
+		return false
+	}
+	return match(in, m.root, unique)
+}
+
 // Match searches in for blices and returns all the blices found as indexes into
 // the original dictionary.
 //
@@ -224,54 +238,61 @@ func NewStringMatcher(dictionary []string) *Matcher {
 func (m *Matcher) Match(in []byte) []int {
 	m.counter++
 
-	return match(in, m.root, func(f *node) bool {
+	unique := func(f *node) bool {
 		if f.counter != m.counter {
 			f.counter = m.counter
 			return true
 		}
 		return false
-	})
+	}
+	var hits []int
+	for hit := range match(in, m.root, unique) {
+		hits = append(hits, hit)
+	}
+	return hits
 }
 
 // match is a core of matching logic. Accepts input byte slice, starting node
 // and a func to check whether should we include result into response or not
-func match(in []byte, n *node, unique func(f *node) bool) []int {
-	var hits []int
+func match(in []byte, n *node, unique func(f *node) bool) iter.Seq[int] {
+	return func(yield func(int) bool) {
+		for _, b := range in {
+			c := int(b)
 
-	for _, b := range in {
-		c := int(b)
-
-		if !n.root && n.child[c] == nil {
-			n = n.fails[c]
-		}
-
-		if n.child[c] != nil {
-			f := n.child[c]
-			n = f
-
-			if f.output {
-				if unique(f) {
-					hits = append(hits, f.index)
-				}
+			if !n.root && n.child[c] == nil {
+				n = n.fails[c]
 			}
 
-			for !f.suffix.root {
-				f = f.suffix
-				if unique(f) {
-					hits = append(hits, f.index)
-				} else {
+			if n.child[c] != nil {
+				f := n.child[c]
+				n = f
 
-					// There's no point working our way up the
-					// suffixes if it's been done before for this call
-					// to Match. The matches are already in hits.
+				if f.output {
+					if unique(f) {
+						if !yield(f.index) {
+							return
+						}
+					}
+				}
 
-					break
+				for !f.suffix.root {
+					f = f.suffix
+					if unique(f) {
+						if !yield(f.index) {
+							return
+						}
+					} else {
+
+						// There's no point working our way up the
+						// suffixes if it's been done before for this call
+						// to Match. The matches are already in hits.
+
+						break
+					}
 				}
 			}
 		}
 	}
-
-	return hits
 }
 
 // MatchThreadSafe provides the same result as Match() but does it in a
@@ -290,14 +311,18 @@ func (m *Matcher) MatchThreadSafe(in []byte) []int {
 		heap = item.(map[int]uint64)
 	}
 
-	hits := match(in, n, func(f *node) bool {
+	unique := func(f *node) bool {
 		g := heap[f.index]
 		if g != generation {
 			heap[f.index] = generation
 			return true
 		}
 		return false
-	})
+	}
+	var hits []int
+	for hit := range match(in, n, unique) {
+		hits = append(hits, hit)
+	}
 
 	m.heap.Put(heap)
 	return hits
