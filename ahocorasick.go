@@ -145,7 +145,7 @@ func (m *Matcher) buildTrie(dictionary [][]byte) {
 		n.index = i
 	}
 
-	l := new(list.List)
+	l := &list.List{}
 	l.PushBack(m.root)
 
 	for l.Len() > 0 {
@@ -195,7 +195,7 @@ func (m *Matcher) buildTrie(dictionary [][]byte) {
 // NewMatcher creates a new Matcher used to match against a set of
 // blices
 func NewMatcher(dictionary [][]byte) *Matcher {
-	m := new(Matcher)
+	m := &Matcher{}
 
 	m.buildTrie(dictionary)
 
@@ -205,7 +205,7 @@ func NewMatcher(dictionary [][]byte) *Matcher {
 // NewStringMatcher creates a new Matcher used to match against a set
 // of strings (this is a helper to make initialization easy)
 func NewStringMatcher(dictionary []string) *Matcher {
-	m := new(Matcher)
+	m := &Matcher{}
 
 	var d [][]byte
 	for _, s := range dictionary {
